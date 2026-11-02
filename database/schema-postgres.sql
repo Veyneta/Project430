@@ -1,3 +1,4 @@
+-- 1) ข้อมูลร้านค้า
 CREATE TABLE IF NOT EXISTS stores (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -12,6 +13,7 @@ CREATE TABLE IF NOT EXISTS stores (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 2) เจ้าของร้านและพนักงาน
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
@@ -28,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT users_store_employee_code_unique UNIQUE (store_id, employee_code)
 );
 
+-- 3) ประวัติการเข้า-ออกงาน
 CREATE TABLE IF NOT EXISTS attendance_logs (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
@@ -55,30 +58,7 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
     CHECK (geofence_distance_out IS NULL OR geofence_distance_out >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS login_logs (
-  id TEXT PRIMARY KEY,
-  store_id TEXT REFERENCES stores(id) ON DELETE CASCADE,
-  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-  account_type TEXT NOT NULL CHECK (account_type IN ('admin', 'employee')),
-  success BOOLEAN NOT NULL,
-  ip_address INET,
-  user_agent TEXT,
-  failure_reason TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id TEXT PRIMARY KEY,
-  store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
-  actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-  actor_type TEXT NOT NULL CHECK (actor_type IN ('admin', 'employee', 'system')),
-  action TEXT NOT NULL,
-  entity_type TEXT NOT NULL,
-  entity_id TEXT,
-  details JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
+-- ดัชนีช่วยค้นหาข้อมูลที่ใช้บ่อย
 CREATE INDEX IF NOT EXISTS idx_users_store_active ON users(store_id, active);
 CREATE INDEX IF NOT EXISTS idx_users_store_role ON users(store_id, role);
 CREATE INDEX IF NOT EXISTS idx_attendance_store_date ON attendance_logs(store_id, clock_in_at);
@@ -86,6 +66,3 @@ CREATE INDEX IF NOT EXISTS idx_attendance_user_open ON attendance_logs(user_id, 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_one_open_per_user
   ON attendance_logs(user_id)
   WHERE clock_out_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_login_logs_store_date ON login_logs(store_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_store_date ON audit_logs(store_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
