@@ -1,0 +1,64 @@
+# time to work
+
+
+
+
+Static local-first prototype for time attendance, user management, GPS geofencing, reports, and admin tools.
+
+## What is included
+
+- Multi-store accounts: register multiple stores with store name, owner email, and password; each store has isolated users, settings, and logs
+- User Management: add, edit, disable, and delete employees; admin and employee roles; PIN login
+- Clock In / Clock Out: automatic timestamping, duplicate prevention, current user session
+- GPS + Geofencing: browser geolocation and distance checks against store coordinates
+- Reports: daily/monthly summaries, late minutes, OT, CSV/JSON export
+- Admin Dashboard: active staff view, store settings, manual time adjustments, check-in map
+
+## How to run
+
+The frontend is plain HTML, CSS, and JavaScript. The project includes a Node.js backend for persistent store, user credentials, and attendance records.
+
+If you are on Windows and do not have Node.js or Python installed, you can use a local preview extension in VS Code or serve the folder with any lightweight HTTP server you already have available.
+
+## SQLite backend
+
+Install Node.js 18 or newer, then run:
+
+```powershell
+npm install
+npm start
+```
+
+The server creates `data/timecation.db` automatically and serves the app at `http://localhost:8787`. The API supports store registration, token-based login with store password plus employee/admin PIN, user management, and attendance records with GPS metadata. Run `npm start` to use the backend; opening `index.html` with a static preview server does not provide the API.
+
+When `DATABASE_URL` is present, the server uses PostgreSQL instead of SQLite. The PostgreSQL schema is created automatically from `database/schema-postgres.sql` on startup. The included `render.yaml` creates a Render Web Service and expects `DATABASE_URL` to be configured manually as a secret. This is intended for a Neon PostgreSQL connection string.
+
+### Deploy with Render and Neon
+
+1. Create a Neon PostgreSQL project and copy its pooled connection string.
+2. Push this repository to GitHub.
+3. In Render, create a Web Service from the GitHub repository, or use the Blueprint from `render.yaml`.
+4. Add the environment variable `DATABASE_URL` in Render with the Neon connection string. Do not commit it to Git.
+5. Deploy and verify `https://<your-render-service>.onrender.com/api/health` returns `{ "ok": true, "database": "postgres" }`.
+
+The application creates the tables and indexes from `database/schema-postgres.sql` when it starts. Neon must allow the Render service to connect using SSL.
+
+SQLite is persistent on the same local machine because it is stored in `data/timecation.db`, but it is not suitable as the primary database on an ephemeral cloud service. After deploying with an older configuration, create the PostgreSQL database and set the Web Service environment variable `DATABASE_URL`; existing accounts stored only in the old instance cannot be recovered after its filesystem was reset.
+
+## Access from another device
+
+Run the server on the main computer with `npm.cmd start`, then use the `LAN access` URL printed in the terminal, for example `http://192.168.1.20:8787`, on a phone or another computer connected to the same Wi-Fi network. If Windows Firewall asks, allow Node.js on Private networks. Do not expose this development server directly to the public internet; deploy it behind HTTPS before production use.
+
+Passwords and PINs are stored as bcrypt hashes. Login tokens are kept in `sessionStorage` by default; users who select "อยู่ในระบบต่อ" also get a token copy in `localStorage` until they log out. Store passwords are not persisted in browser storage. Attendance records are stored in SQLite locally or PostgreSQL when `DATABASE_URL` is configured. Legacy employee data is migrated once after an Admin login.
+
+## Demo accounts
+
+- Admin: `Admin` / PIN `1234`
+- Employee: `Mook` / PIN `2468`
+- Employee: `Natt` / PIN `1357`
+
+## Notes
+
+- UI preferences and a local fallback snapshot may remain in `localStorage`; authoritative users and attendance data are stored in the backend database.
+- GPS access requires HTTPS or localhost.
+- Exported CSV files can be opened in Excel.
